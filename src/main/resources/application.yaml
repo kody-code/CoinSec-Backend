@@ -3,6 +3,16 @@ spring:
     name: backend
   profiles:
     active: dev
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  web:
+    resources:
+      static-locations: file:./uploads/, classpath:/static/
+
+app:
+  upload-dir: uploads
 
 # Sa-Token
 sa-token:
