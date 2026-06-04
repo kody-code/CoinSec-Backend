@@ -6,8 +6,11 @@ spring:
 
 # Sa-Token
 sa-token:
-  token-name: Authorization
-  token-prefix: Bearer
+  token-name: satoken
   timeout: 2592000
-  is-log: false
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: true
 
