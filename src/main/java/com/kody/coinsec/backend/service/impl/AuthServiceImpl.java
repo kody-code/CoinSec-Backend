@@ -5,8 +5,10 @@ import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AuthResponse;
 import com.kody.coinsec.backend.dto.LoginRequest;
 import com.kody.coinsec.backend.dto.SetupRequest;
+import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.CategoryEntity;
 import com.kody.coinsec.backend.entity.model.UserEntity;
+import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
 import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import com.kody.coinsec.backend.service.AuthService;
@@ -24,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final AccountRepository accountRepository;
 
     private static final List<CategoryTemplate> DEFAULT_EXPENSES = List.of(
             new CategoryTemplate("餐饮", "restaurant", 1),
@@ -63,6 +66,7 @@ public class AuthServiceImpl implements AuthService {
         UserEntity saved = userRepository.save(user);
 
         createDefaultCategories(saved.getUserId());
+        createDefaultAccounts(saved.getUserId());
 
         StpUtil.login(saved.getUserId());
         String token = StpUtil.getTokenValue();
@@ -80,6 +84,15 @@ public class AuthServiceImpl implements AuthService {
         DEFAULT_INCOMES.forEach(t -> defaults.add(CategoryEntity.builder()
                 .userId(userId).name(t.name).type("income").icon(t.icon).sort(t.sort).build()));
         categoryRepository.saveAll(defaults);
+    }
+
+    private void createDefaultAccounts(Long userId) {
+        List<AccountEntity> defaults = new ArrayList<>();
+        defaults.add(AccountEntity.builder().userId(userId).name("微信").icon("wechat").build());
+        defaults.add(AccountEntity.builder().userId(userId).name("支付宝").icon("alipay").build());
+        defaults.add(AccountEntity.builder().userId(userId).name("现金").icon("payments").build());
+        defaults.add(AccountEntity.builder().userId(userId).name("银行卡").icon("credit_card").build());
+        accountRepository.saveAll(defaults);
     }
 
     private record CategoryTemplate(String name, String icon, int sort) {}
