@@ -32,6 +32,7 @@ dependencies {
 	testAnnotationProcessor("org.projectlombok:lombok")
 
     implementation("cn.dev33:sa-token-spring-boot4-starter:1.45.0")
+    implementation("org.mindrot:jbcrypt:0.4")
 }
 
 tasks.withType<Test> {
