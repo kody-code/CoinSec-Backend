@@ -6,6 +6,7 @@ import com.kody.coinsec.backend.dto.AuthResponse;
 import com.kody.coinsec.backend.dto.LoginRequest;
 import com.kody.coinsec.backend.dto.SetupRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
+import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
 import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class AuthServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CategoryRepository categoryRepository;
 
     @InjectMocks
     private AuthServiceImpl authService;
