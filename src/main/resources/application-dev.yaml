@@ -1,6 +1,13 @@
+server:
+  port: 8081
+
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/coinsec_db
     username: coinsec
     password: 097016@CoinSec
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
