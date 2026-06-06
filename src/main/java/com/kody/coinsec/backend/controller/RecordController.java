@@ -26,6 +26,17 @@ public class RecordController {
         return Result.success(Map.of("recordId", record.getRecordId()));
     }
 
+    @PutMapping("/{id}")
+    public Result<RecordResponse> update(@PathVariable Long id, @RequestBody RecordRequest request) {
+        return Result.success(recordService.updateRecord(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        recordService.deleteRecord(id);
+        return Result.success(null);
+    }
+
     @GetMapping
     public Result<Page<RecordResponse>> list(
             @RequestParam(defaultValue = "1") int page,

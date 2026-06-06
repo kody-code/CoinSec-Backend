@@ -11,6 +11,10 @@ public interface RecordService {
 
     RecordResponse createRecord(RecordRequest request);
 
+    RecordResponse updateRecord(Long recordId, RecordRequest request);
+
+    void deleteRecord(Long recordId);
+
     Page<RecordResponse> getRecords(int page, int size, Long categoryId, String type,
                                     LocalDate startDate, LocalDate endDate);
 

@@ -57,6 +57,59 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
+    @Transactional
+    public RecordResponse updateRecord(Long recordId, RecordRequest request) {
+        long userId = StpUtil.getLoginIdAsLong();
+        RecordEntity record = recordRepository.findById(recordId)
+                .filter(r -> r.getUserId().equals(userId) && !r.getIsDeleted())
+                .orElseThrow(() -> new BusinessException(404, "记录不存在"));
+
+        updateBalance(
+                findAccount(record.getAccountId(), userId),
+                record.getType(),
+                record.getAmount(),
+                true
+        );
+
+        record.setCategoryId(request.getCategoryId());
+        record.setAccountId(request.getAccountId());
+        record.setType(request.getType());
+        record.setAmount(request.getAmount());
+        record.setRemark(request.getRemark());
+        record.setRecordTime(parseTime(request.getRecordTime()));
+
+        RecordEntity saved = recordRepository.save(record);
+
+        updateBalance(
+                findAccount(request.getAccountId(), userId),
+                request.getType(),
+                request.getAmount(),
+                false
+        );
+
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecord(Long recordId) {
+        long userId = StpUtil.getLoginIdAsLong();
+        RecordEntity record = recordRepository.findById(recordId)
+                .filter(r -> r.getUserId().equals(userId) && !r.getIsDeleted())
+                .orElseThrow(() -> new BusinessException(404, "记录不存在"));
+
+        record.setIsDeleted(true);
+        recordRepository.save(record);
+
+        updateBalance(
+                findAccount(record.getAccountId(), userId),
+                record.getType(),
+                record.getAmount(),
+                true
+        );
+    }
+
+    @Override
     public Page<RecordResponse> getRecords(int page, int size, Long categoryId, String type,
                                            LocalDate startDate, LocalDate endDate) {
         long userId = StpUtil.getLoginIdAsLong();
