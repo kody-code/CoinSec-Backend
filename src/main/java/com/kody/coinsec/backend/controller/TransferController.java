@@ -9,7 +9,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -32,5 +34,21 @@ public class TransferController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return Result.success(transferService.getTransfers(page, size, startDate, endDate));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        transferService.deleteTransfer(id);
+        return Result.success(null);
+    }
+
+    @DeleteMapping("/by-record")
+    public Result<Void> deleteByRecord(
+            @RequestParam Long accountId,
+            @RequestParam BigDecimal amount,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime recordTime,
+            @RequestParam String type) {
+        transferService.deleteTransferByRecord(accountId, amount, recordTime, type);
+        return Result.success(null);
     }
 }

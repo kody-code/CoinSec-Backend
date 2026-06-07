@@ -6,6 +6,7 @@ import com.kody.coinsec.backend.dto.StatisticsResponse;
 import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface RecordService {
 
@@ -15,8 +16,8 @@ public interface RecordService {
 
     void deleteRecord(Long recordId);
 
-    Page<RecordResponse> getRecords(int page, int size, Long categoryId, String type,
-                                    LocalDate startDate, LocalDate endDate);
+    Page<RecordResponse> getRecords(int page, int size, List<Long> categoryIds, String type,
+                                    LocalDate startDate, LocalDate endDate, Long accountId);
 
-    StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate);
+    StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate, Long accountId);
 }

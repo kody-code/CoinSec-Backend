@@ -110,28 +110,33 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
-    public Page<RecordResponse> getRecords(int page, int size, Long categoryId, String type,
-                                           LocalDate startDate, LocalDate endDate) {
+    public Page<RecordResponse> getRecords(int page, int size, List<Long> categoryIds, String type,
+                                           LocalDate startDate, LocalDate endDate, Long accountId) {
         long userId = StpUtil.getLoginIdAsLong();
         LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
         LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
 
-        var spec = RecordSpecification.withFilters(userId, categoryId, type, start, end);
+        var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId);
         var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "recordTime"));
 
         return recordRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Override
-    public StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate) {
+    public StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate, Long accountId) {
         long userId = StpUtil.getLoginIdAsLong();
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
-        BigDecimal totalIncome = recordRepository.sumByTypeAndDateRange(userId, "income", start, end);
-        BigDecimal totalExpense = recordRepository.sumByTypeAndDateRange(userId, "expense", start, end);
-        List<StatisticsResponse.CategoryStat> categoryStats =
-                recordRepository.findCategoryStats(userId, start, end);
+        BigDecimal totalIncome = accountId != null
+                ? recordRepository.sumByTypeAndDateRangeAndAccountId(userId, "income", start, end, accountId)
+                : recordRepository.sumByTypeAndDateRange(userId, "income", start, end);
+        BigDecimal totalExpense = accountId != null
+                ? recordRepository.sumByTypeAndDateRangeAndAccountId(userId, "expense", start, end, accountId)
+                : recordRepository.sumByTypeAndDateRange(userId, "expense", start, end);
+        List<StatisticsResponse.CategoryStat> categoryStats = accountId != null
+                ? recordRepository.findCategoryStatsByAccountId(userId, start, end, accountId)
+                : recordRepository.findCategoryStats(userId, start, end);
 
         return StatisticsResponse.builder()
                 .totalIncome(totalIncome)

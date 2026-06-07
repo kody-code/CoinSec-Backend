@@ -4,10 +4,15 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AccountRequest;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
+import com.kody.coinsec.backend.entity.model.RecordEntity;
+import com.kody.coinsec.backend.entity.model.TransferEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
+import com.kody.coinsec.backend.mapper.dao.RecordRepository;
+import com.kody.coinsec.backend.mapper.dao.TransferRepository;
 import com.kody.coinsec.backend.service.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +22,8 @@ import java.util.List;
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
+    private final RecordRepository recordRepository;
+    private final TransferRepository transferRepository;
 
     @Override
     public List<AccountEntity> getAccounts() {
@@ -53,10 +60,40 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public void deleteAccount(Long id) {
         AccountEntity account = findById(id);
+        long userId = StpUtil.getLoginIdAsLong();
+
+        deleteAssociatedRecords(userId, id);
+        deleteAssociatedTransfers(userId, id);
+
         account.setIsDeleted(true);
         accountRepository.save(account);
+    }
+
+    private void deleteAssociatedRecords(long userId, Long accountId) {
+        List<RecordEntity> records = recordRepository
+                .findByUserIdAndAccountIdAndIsDeletedFalse(userId, accountId);
+        for (RecordEntity r : records) {
+            r.setIsDeleted(true);
+            recordRepository.save(r);
+        }
+    }
+
+    private void deleteAssociatedTransfers(long userId, Long accountId) {
+        List<TransferEntity> asFrom = transferRepository
+                .findByUserIdAndFromAccountIdAndIsDeletedFalse(userId, accountId);
+        for (TransferEntity t : asFrom) {
+            t.setIsDeleted(true);
+            transferRepository.save(t);
+        }
+        List<TransferEntity> asTo = transferRepository
+                .findByUserIdAndToAccountIdAndIsDeletedFalse(userId, accountId);
+        for (TransferEntity t : asTo) {
+            t.setIsDeleted(true);
+            transferRepository.save(t);
+        }
     }
 
     private AccountEntity findById(Long id) {

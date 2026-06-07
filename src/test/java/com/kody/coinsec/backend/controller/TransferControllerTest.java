@@ -66,4 +66,12 @@ class TransferControllerTest {
         mockMvc.perform(get("/api/transfers"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @DisplayName("DELETE /api/transfers/{id} - 删除转账成功")
+    void delete_Success() throws Exception {
+        mockMvc.perform(delete("/api/transfers/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
 }

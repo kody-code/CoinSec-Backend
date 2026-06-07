@@ -5,6 +5,8 @@ import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AccountRequest;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
+import com.kody.coinsec.backend.mapper.dao.RecordRepository;
+import com.kody.coinsec.backend.mapper.dao.TransferRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,10 @@ class AccountServiceImplTest {
 
     @Mock
     private AccountRepository accountRepository;
+    @Mock
+    private RecordRepository recordRepository;
+    @Mock
+    private TransferRepository transferRepository;
 
     @InjectMocks
     private AccountServiceImpl accountService;
@@ -87,6 +93,12 @@ class AccountServiceImplTest {
         AccountEntity account = AccountEntity.builder()
                 .accountId(1L).userId(1L).name("微信").build();
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(recordRepository.findByUserIdAndAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
+        when(transferRepository.findByUserIdAndFromAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
+        when(transferRepository.findByUserIdAndToAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
 
         accountService.deleteAccount(1L);
 
