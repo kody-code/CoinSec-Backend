@@ -19,17 +19,13 @@ spring:
       max-lifetime: 1200000
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     show-sql: false
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
 
 logging:
   level:
-    root: WARN
+    root: INFO
     com.kody.coinsec.backend: INFO
     org.springframework: WARN
     org.hibernate: WARN
