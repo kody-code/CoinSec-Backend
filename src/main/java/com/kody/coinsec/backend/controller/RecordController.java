@@ -5,6 +5,12 @@ import com.kody.coinsec.backend.dto.RecordRequest;
 import com.kody.coinsec.backend.dto.RecordResponse;
 import com.kody.coinsec.backend.dto.StatisticsResponse;
 import com.kody.coinsec.backend.service.RecordService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,44 +23,71 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/records")
 @RequiredArgsConstructor
+@Tag(name = "账单管理", description = "收支记录的增删改查、筛选、统计")
+@SecurityRequirement(name = "satoken")
 public class RecordController {
 
     private final RecordService recordService;
 
+    @Operation(summary = "创建账单", description = "新增一条收入或支出记录，自动更新对应账户余额")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "创建成功，返回 recordId")
+    })
     @PostMapping
     public Result<Map<String, Long>> create(@RequestBody RecordRequest request) {
         RecordResponse record = recordService.createRecord(request);
         return Result.success(Map.of("recordId", record.getRecordId()));
     }
 
+    @Operation(summary = "更新账单", description = "修改指定账单记录，自动调整账户余额")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "更新成功"),
+            @ApiResponse(responseCode = "404", description = "账单不存在")
+    })
     @PutMapping("/{id}")
-    public Result<RecordResponse> update(@PathVariable Long id, @RequestBody RecordRequest request) {
+    public Result<RecordResponse> update(
+            @Parameter(description = "账单 ID") @PathVariable Long id,
+            @RequestBody RecordRequest request) {
         return Result.success(recordService.updateRecord(id, request));
     }
 
+    @Operation(summary = "删除账单", description = "逻辑删除指定账单，自动回退账户余额")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "删除成功"),
+            @ApiResponse(responseCode = "404", description = "账单不存在")
+    })
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(
+            @Parameter(description = "账单 ID") @PathVariable Long id) {
         recordService.deleteRecord(id);
         return Result.success(null);
     }
 
+    @Operation(summary = "账单列表", description = "分页查询账单记录，支持多维度筛选")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "成功返回分页数据")
+    })
     @GetMapping
     public Result<Page<RecordResponse>> list(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) List<Long> categoryIds,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long accountId) {
+            @Parameter(description = "页码，从 1 开始") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "分类 ID 列表，多个用逗号分隔") @RequestParam(required = false) List<Long> categoryIds,
+            @Parameter(description = "类型: income(收入) / expense(支出)") @RequestParam(required = false) String type,
+            @Parameter(description = "开始日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "结束日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @Parameter(description = "账户 ID") @RequestParam(required = false) Long accountId) {
         return Result.success(recordService.getRecords(page, size, categoryIds, type, startDate, endDate, accountId));
     }
 
+    @Operation(summary = "收支统计", description = "按日期范围统计总收入、总支出和分类明细")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "成功返回统计结果")
+    })
     @GetMapping("/statistics")
     public Result<StatisticsResponse> statistics(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long accountId) {
+            @Parameter(description = "开始日期 (yyyy-MM-dd)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "结束日期 (yyyy-MM-dd)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @Parameter(description = "账户 ID，不传则统计全部账户") @RequestParam(required = false) Long accountId) {
         return Result.success(recordService.getStatistics(startDate, endDate, accountId));
     }
 }

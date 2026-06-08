@@ -35,14 +35,14 @@ jobs:
         run: ./gradlew bootJar --no-daemon
 
       - name: List built files
-        run: ls -lh CoinSec-Backend/build/libs/
+        run: ls -lh build/libs/
 
       - name: Create Release & Upload
         uses: softprops/action-gh-release@v2
         with:
           name: "Backend ${{ github.ref_name }}"
           body: "后端自动构建版本 ${{ github.ref_name }}"
-          files: CoinSec-Backend/build/libs/*.jar
+          files: build/libs/*.jar
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

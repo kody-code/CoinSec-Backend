@@ -9,6 +9,8 @@ import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import com.kody.coinsec.backend.service.UserService;
 import com.kody.coinsec.backend.util.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +24,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
 
@@ -68,10 +72,8 @@ public class UserServiceImpl implements UserService {
         String filename = "avatar_" + UUID.randomUUID() + ext;
 
         try {
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
+            Files.createDirectories(uploadPath);
             Path filePath = uploadPath.resolve(filename);
             file.transferTo(filePath.toFile());
 
@@ -81,7 +83,8 @@ public class UserServiceImpl implements UserService {
 
             return "/uploads/" + filename;
         } catch (IOException e) {
-            throw new BusinessException("头像上传失败");
+            log.error("头像上传失败: {}", e.getMessage(), e);
+            throw new BusinessException("头像上传失败: " + e.getMessage());
         }
     }
 }
