@@ -29,11 +29,9 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        working-directory: ./CoinSec-Backend
         run: chmod +x gradlew
 
       - name: Build Backend Jar
-        working-directory: ./CoinSec-Backend
         run: ./gradlew bootJar --no-daemon
 
       - name: List built files
