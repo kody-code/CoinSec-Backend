@@ -30,6 +30,12 @@ logging:
     org.springframework: WARN
     org.hibernate: WARN
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 sa-token:
   is-log: false
   timeout: ${TOKEN_TIMEOUT:2592000}
