@@ -1,12 +1,18 @@
 package com.kody.coinsec.backend.common.result;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
 public class Result<T> {
 
+    @Schema(description = "状态码: 200-成功, 401-未登录, 404-未找到, 500-服务器错误")
     private int code;
+
+    @Schema(description = "提示信息")
     private String msg;
+
+    @Schema(description = "返回数据")
     private T data;
 
     private Result() {}

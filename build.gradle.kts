@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.kody.coinsec"
-version = "1.0.1"
+version = "1.0.2"
 
 java {
 	toolchain {
@@ -35,6 +35,7 @@ dependencies {
 
     implementation("cn.dev33:sa-token-spring-boot4-starter:1.45.0")
     implementation("org.mindrot:jbcrypt:0.4")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 }
 
 tasks.withType<Test> {
