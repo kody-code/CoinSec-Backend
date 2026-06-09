@@ -4,9 +4,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AccountRequest;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
+import com.kody.coinsec.backend.entity.model.UserEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordRepository;
 import com.kody.coinsec.backend.mapper.dao.TransferRepository;
+import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +36,8 @@ class AccountServiceImplTest {
     private RecordRepository recordRepository;
     @Mock
     private TransferRepository transferRepository;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private AccountServiceImpl accountService;
@@ -104,5 +108,52 @@ class AccountServiceImplTest {
 
         assertTrue(account.getIsDeleted());
         verify(accountRepository).save(account);
+    }
+
+    @Test
+    @DisplayName("删除默认账户-自动清空用户默认引用")
+    void deleteAccount_ClearsDefaultReferences() {
+        AccountEntity account = AccountEntity.builder()
+                .accountId(1L).userId(1L).name("微信").build();
+        UserEntity user = UserEntity.builder()
+                .userId(1L)
+                .defaultIncomeAccountId(1L)
+                .defaultExpenseAccountId(1L)
+                .build();
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(recordRepository.findByUserIdAndAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
+        when(transferRepository.findByUserIdAndFromAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
+        when(transferRepository.findByUserIdAndToAccountIdAndIsDeletedFalse(1L, 1L))
+                .thenReturn(java.util.Collections.emptyList());
+
+        accountService.deleteAccount(1L);
+
+        assertNull(user.getDefaultIncomeAccountId());
+        assertNull(user.getDefaultExpenseAccountId());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("getAccountById-成功返回账户")
+    void getAccountById_Success() {
+        AccountEntity account = AccountEntity.builder()
+                .accountId(1L).userId(1L).name("微信").build();
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+
+        AccountEntity result = accountService.getAccountById(1L);
+
+        assertEquals(1L, result.getAccountId());
+        assertEquals("微信", result.getName());
+    }
+
+    @Test
+    @DisplayName("getAccountById-账户不存在时抛出异常")
+    void getAccountById_NotFound_ThrowsException() {
+        when(accountRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(BusinessException.class, () -> accountService.getAccountById(999L));
     }
 }

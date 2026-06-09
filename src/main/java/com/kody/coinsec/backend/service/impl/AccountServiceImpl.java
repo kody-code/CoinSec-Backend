@@ -6,9 +6,11 @@ import com.kody.coinsec.backend.dto.AccountRequest;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.RecordEntity;
 import com.kody.coinsec.backend.entity.model.TransferEntity;
+import com.kody.coinsec.backend.entity.model.UserEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordRepository;
 import com.kody.coinsec.backend.mapper.dao.TransferRepository;
+import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import com.kody.coinsec.backend.service.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final RecordRepository recordRepository;
     private final TransferRepository transferRepository;
+    private final UserRepository userRepository;
 
     @Override
     public List<AccountEntity> getAccounts() {
@@ -65,11 +68,30 @@ public class AccountServiceImpl implements AccountService {
         AccountEntity account = findById(id);
         long userId = StpUtil.getLoginIdAsLong();
 
+        clearDefaultAccountReferences(userId, id);
+
         deleteAssociatedRecords(userId, id);
         deleteAssociatedTransfers(userId, id);
 
         account.setIsDeleted(true);
         accountRepository.save(account);
+    }
+
+    private void clearDefaultAccountReferences(long userId, Long accountId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            boolean updated = false;
+            if (accountId.equals(user.getDefaultIncomeAccountId())) {
+                user.setDefaultIncomeAccountId(null);
+                updated = true;
+            }
+            if (accountId.equals(user.getDefaultExpenseAccountId())) {
+                user.setDefaultExpenseAccountId(null);
+                updated = true;
+            }
+            if (updated) {
+                userRepository.save(user);
+            }
+        });
     }
 
     private void deleteAssociatedRecords(long userId, Long accountId) {
@@ -94,6 +116,11 @@ public class AccountServiceImpl implements AccountService {
             t.setIsDeleted(true);
             transferRepository.save(t);
         }
+    }
+
+    @Override
+    public AccountEntity getAccountById(Long id) {
+        return findById(id);
     }
 
     private AccountEntity findById(Long id) {

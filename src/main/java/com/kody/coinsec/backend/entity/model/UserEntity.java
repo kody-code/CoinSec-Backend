@@ -43,6 +43,14 @@ public class UserEntity {
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
+    @Column(name = "default_income_account_id")
+    @Schema(description = "默认支出账户 ID")
+    private Long defaultIncomeAccountId;
+
+    @Column(name = "default_expense_account_id")
+    @Schema(description = "默认收入账户 ID")
+    private Long defaultExpenseAccountId;
+
     @Column(name = "is_deleted")
     @Schema(hidden = true)
     @Builder.Default

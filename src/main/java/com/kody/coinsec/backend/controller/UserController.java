@@ -1,6 +1,7 @@
 package com.kody.coinsec.backend.controller;
 
 import com.kody.coinsec.backend.common.result.Result;
+import com.kody.coinsec.backend.dto.DefaultAccountRequest;
 import com.kody.coinsec.backend.dto.UpdateNicknameRequest;
 import com.kody.coinsec.backend.dto.UpdatePasswordRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
@@ -55,6 +56,17 @@ public class UserController {
     @PutMapping("/password")
     public Result<Void> updatePassword(@RequestBody UpdatePasswordRequest request) {
         userService.updatePassword(request);
+        return Result.success();
+    }
+
+    @Operation(summary = "设置默认账户", description = "设置默认收入和支出账户，可相同或不同")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "设置成功"),
+            @ApiResponse(responseCode = "404", description = "账户不存在")
+    })
+    @PutMapping("/default-accounts")
+    public Result<Void> setDefaultAccounts(@RequestBody DefaultAccountRequest request) {
+        userService.setDefaultAccounts(request);
         return Result.success();
     }
 
