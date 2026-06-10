@@ -33,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +58,7 @@ public class RecordServiceImpl implements RecordService {
                 .amount(request.getAmount())
                 .remark(request.getRemark())
                 .recordTime(parseTime(request.getRecordTime()))
+                .tags(resolveTags(request.getTagIds(), userId))
                 .build();
         RecordEntity saved = recordRepository.save(record);
 
@@ -86,6 +88,9 @@ public class RecordServiceImpl implements RecordService {
         record.setAmount(request.getAmount());
         record.setRemark(request.getRemark());
         record.setRecordTime(parseTime(request.getRecordTime()));
+        if (request.getTagIds() != null) {
+            record.setTags(resolveTags(request.getTagIds(), userId));
+        }
 
         RecordEntity saved = recordRepository.save(record);
 
@@ -216,17 +221,7 @@ public class RecordServiceImpl implements RecordService {
                 .filter(r -> r.getUserId().equals(userId) && !r.getIsDeleted())
                 .orElseThrow(() -> new BusinessException(404, "记录不存在"));
 
-        if (tagIds == null || tagIds.isEmpty()) {
-            record.setTags(new HashSet<>());
-        } else {
-            List<TagEntity> tags = tagRepository.findAllById(tagIds);
-            for (TagEntity tag : tags) {
-                if (!tag.getUserId().equals(userId) || tag.getIsDeleted()) {
-                    throw new BusinessException(404, "标签不存在: " + tag.getTagId());
-                }
-            }
-            record.setTags(new HashSet<>(tags));
-        }
+        record.setTags(resolveTags(tagIds, userId));
         recordRepository.save(record);
     }
 
@@ -247,6 +242,19 @@ public class RecordServiceImpl implements RecordService {
         return accountRepository.findById(accountId)
                 .filter(a -> a.getUserId().equals(userId) && !a.getIsDeleted())
                 .orElseThrow(() -> new BusinessException(404, "账户不存在"));
+    }
+
+    private Set<TagEntity> resolveTags(List<Long> tagIds, Long userId) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new HashSet<>();
+        }
+        List<TagEntity> tags = tagRepository.findAllById(tagIds);
+        for (TagEntity tag : tags) {
+            if (!tag.getUserId().equals(userId) || tag.getIsDeleted()) {
+                throw new BusinessException(404, "标签不存在: " + tag.getTagId());
+            }
+        }
+        return new HashSet<>(tags);
     }
 
     private RecordResponse toResponse(RecordEntity r) {
