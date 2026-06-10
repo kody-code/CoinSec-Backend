@@ -49,7 +49,7 @@ public class RecordEntity {
     @Builder.Default
     private Boolean isDeleted = false;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "record_tags",
             joinColumns = @JoinColumn(name = "record_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
