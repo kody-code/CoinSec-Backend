@@ -2,6 +2,8 @@ package com.kody.coinsec.backend.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
+import com.kody.coinsec.backend.dto.AnnualStatisticsResponse;
+import com.kody.coinsec.backend.dto.MonthlyStatisticsResponse;
 import com.kody.coinsec.backend.dto.RecordRequest;
 import com.kody.coinsec.backend.dto.RecordResponse;
 import com.kody.coinsec.backend.dto.StatisticsResponse;
@@ -22,10 +24,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -149,6 +153,59 @@ public class RecordServiceImpl implements RecordService {
                 .totalExpense(totalExpense)
                 .categoryStats(categoryStats)
                 .build();
+    }
+
+    @Override
+    public List<MonthlyStatisticsResponse> getMonthlyStatistics(Integer year) {
+        long userId = StpUtil.getLoginIdAsLong();
+        return recordRepository.findMonthlyStatistics(userId, year);
+    }
+
+    @Override
+    public List<AnnualStatisticsResponse> getAnnualStatistics(Integer startYear, Integer endYear) {
+        long userId = StpUtil.getLoginIdAsLong();
+        return recordRepository.findAnnualStatistics(userId, startYear, endYear);
+    }
+
+    @Override
+    public void exportRecords(LocalDate startDate, LocalDate endDate, String type, HttpServletResponse response) {
+        long userId = StpUtil.getLoginIdAsLong();
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        var spec = RecordSpecification.withFilters(userId, null, type, start, end, null, null, null);
+
+        List<RecordEntity> records = recordRepository.findAll(spec,
+                Sort.by(Sort.Direction.DESC, "recordTime"));
+
+        StringBuilder csv = new StringBuilder("ID,类型,金额,分类,账户,备注,时间\n");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (RecordEntity record : records) {
+            String categoryName = categoryRepository.findById(record.getCategoryId())
+                    .map(CategoryEntity::getName).orElse("");
+            String accountName = accountRepository.findById(record.getAccountId())
+                    .map(AccountEntity::getName).orElse("");
+
+            csv.append(record.getRecordId()).append(",")
+                    .append(record.getType()).append(",")
+                    .append(record.getAmount()).append(",")
+                    .append(categoryName).append(",")
+                    .append(accountName).append(",")
+                    .append(record.getRemark() != null ? record.getRemark() : "").append(",")
+                    .append(record.getRecordTime().format(fmt))
+                    .append("\n");
+        }
+
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=records.csv");
+        response.setCharacterEncoding("UTF-8");
+        try {
+            response.getWriter().write(csv.toString());
+            response.getWriter().flush();
+        } catch (Exception e) {
+            throw new RuntimeException("导出失败", e);
+        }
     }
 
     @Override
