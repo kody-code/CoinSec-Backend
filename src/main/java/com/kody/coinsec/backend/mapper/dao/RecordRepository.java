@@ -127,4 +127,12 @@ public interface RecordRepository extends JpaRepository<RecordEntity, Long>,
             @Param("userId") Long userId,
             @Param("startYear") Integer startYear,
             @Param("endYear") Integer endYear);
+
+    @Query("""
+            SELECT r.recordId, t.tagId
+            FROM RecordEntity r
+            JOIN r.tags t
+            WHERE r.recordId IN :recordIds
+            """)
+    List<Object[]> findTagIdsByRecordIds(@Param("recordIds") List<Long> recordIds);
 }

@@ -19,6 +19,7 @@ import com.kody.coinsec.backend.mapper.dao.TagRepository;
 import com.kody.coinsec.backend.service.RecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -135,7 +138,23 @@ public class RecordServiceImpl implements RecordService {
         var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId, keyword, tagIds);
         var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "recordTime"));
 
-        return recordRepository.findAll(spec, pageable).map(this::toResponse);
+        Page<RecordEntity> entityPage = recordRepository.findAll(spec, pageable);
+        List<Long> recordIds = entityPage.getContent().stream()
+                .map(RecordEntity::getRecordId)
+                .toList();
+
+        Map<Long, List<Long>> recordTagMap = recordIds.isEmpty() ? Map.of()
+                : recordRepository.findTagIdsByRecordIds(recordIds).stream()
+                .collect(Collectors.groupingBy(
+                        row -> (Long) row[0],
+                        Collectors.mapping(row -> (Long) row[1], Collectors.toList())
+                ));
+
+        List<RecordResponse> responses = entityPage.getContent().stream()
+                .map(r -> toResponse(r, recordTagMap.getOrDefault(r.getRecordId(), List.of())))
+                .toList();
+
+        return new PageImpl<>(responses, pageable, entityPage.getTotalElements());
     }
 
     @Override
@@ -259,14 +278,17 @@ public class RecordServiceImpl implements RecordService {
     }
 
     private RecordResponse toResponse(RecordEntity r) {
+        List<Long> tagIds = r.getTags().stream()
+                .map(TagEntity::getTagId)
+                .toList();
+        return toResponse(r, tagIds);
+    }
+
+    private RecordResponse toResponse(RecordEntity r, List<Long> tagIds) {
         String categoryName = categoryRepository.findById(r.getCategoryId())
                 .map(CategoryEntity::getName).orElse(null);
         String accountName = accountRepository.findById(r.getAccountId())
                 .map(AccountEntity::getName).orElse(null);
-
-        List<Long> tagIds = r.getTags().stream()
-                .map(TagEntity::getTagId)
-                .toList();
 
         return RecordResponse.builder()
                 .recordId(r.getRecordId())
