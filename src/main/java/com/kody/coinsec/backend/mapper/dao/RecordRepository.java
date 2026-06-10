@@ -38,6 +38,20 @@ public interface RecordRepository extends JpaRepository<RecordEntity, Long>,
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RecordEntity r
             WHERE r.userId = :userId AND r.isDeleted = false
+                AND r.type = 'expense'
+                AND r.categoryId = :categoryId
+                AND r.recordTime BETWEEN :startDate AND :endDate
+            """)
+    BigDecimal sumExpenseByCategoryAndDateRange(
+            @Param("userId") Long userId,
+            @Param("categoryId") Long categoryId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    @Query("""
+            SELECT COALESCE(SUM(r.amount), 0)
+            FROM RecordEntity r
+            WHERE r.userId = :userId AND r.isDeleted = false
                 AND r.type = :type
                 AND r.recordTime BETWEEN :startDate AND :endDate
             """)
