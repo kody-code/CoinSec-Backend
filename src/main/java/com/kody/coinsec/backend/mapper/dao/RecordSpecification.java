@@ -4,6 +4,8 @@ import com.kody.coinsec.backend.entity.model.RecordEntity;
 import com.kody.coinsec.backend.entity.model.TagEntity;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
@@ -41,9 +43,12 @@ public class RecordSpecification {
                 predicates.add(cb.like(cb.lower(root.get("remark")), "%" + keyword.toLowerCase() + "%"));
             }
             if (tagIds != null && !tagIds.isEmpty()) {
-                Join<RecordEntity, TagEntity> tagJoin = root.join("tags");
-                predicates.add(tagJoin.get("tagId").in(tagIds));
-                query.distinct(true);
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<RecordEntity> subRoot = subquery.from(RecordEntity.class);
+                Join<RecordEntity, TagEntity> subTagJoin = subRoot.join("tags");
+                subquery.select(subRoot.get("recordId"))
+                        .where(subTagJoin.get("tagId").in(tagIds));
+                predicates.add(root.get("recordId").in(subquery));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
