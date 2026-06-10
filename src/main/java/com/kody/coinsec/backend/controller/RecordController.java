@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/records")
@@ -75,8 +76,23 @@ public class RecordController {
             @Parameter(description = "类型: income(收入) / expense(支出)") @RequestParam(required = false) String type,
             @Parameter(description = "开始日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @Parameter(description = "结束日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @Parameter(description = "账户 ID") @RequestParam(required = false) Long accountId) {
-        return Result.success(recordService.getRecords(page, size, categoryIds, type, startDate, endDate, accountId));
+            @Parameter(description = "账户 ID") @RequestParam(required = false) Long accountId,
+            @Parameter(description = "备注关键字搜索") @RequestParam(required = false) String keyword,
+            @Parameter(description = "标签 ID 列表，多个用逗号分隔") @RequestParam(required = false) List<Long> tagIds) {
+        return Result.success(recordService.getRecords(page, size, categoryIds, type, startDate, endDate, accountId, keyword, tagIds));
+    }
+
+    @Operation(summary = "更新账单标签", description = "全量替换账单关联的标签")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "更新成功"),
+            @ApiResponse(responseCode = "404", description = "账单不存在")
+    })
+    @PutMapping("/{id}/tags")
+    public Result<Void> updateTags(
+            @Parameter(description = "账单 ID") @PathVariable Long id,
+            @RequestBody Map<String, List<Long>> body) {
+        recordService.updateRecordTags(id, body.get("tagIds"));
+        return Result.success();
     }
 
     @Operation(summary = "收支统计", description = "按日期范围统计总收入、总支出和分类明细")

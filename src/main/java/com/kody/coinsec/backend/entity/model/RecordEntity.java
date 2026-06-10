@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Builder
@@ -46,4 +48,11 @@ public class RecordEntity {
     @Column(name = "is_deleted")
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @ManyToMany
+    @JoinTable(name = "record_tags",
+            joinColumns = @JoinColumn(name = "record_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    @Builder.Default
+    private Set<TagEntity> tags = new HashSet<>();
 }

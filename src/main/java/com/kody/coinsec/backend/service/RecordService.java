@@ -17,7 +17,10 @@ public interface RecordService {
     void deleteRecord(Long recordId);
 
     Page<RecordResponse> getRecords(int page, int size, List<Long> categoryIds, String type,
-                                    LocalDate startDate, LocalDate endDate, Long accountId);
+                                    LocalDate startDate, LocalDate endDate, Long accountId,
+                                    String keyword, List<Long> tagIds);
 
     StatisticsResponse getStatistics(LocalDate startDate, LocalDate endDate, Long accountId);
+
+    void updateRecordTags(Long recordId, List<Long> tagIds);
 }
