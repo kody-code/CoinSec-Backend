@@ -8,10 +8,12 @@ import com.kody.coinsec.backend.dto.StatisticsResponse;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.CategoryEntity;
 import com.kody.coinsec.backend.entity.model.RecordEntity;
+import com.kody.coinsec.backend.entity.model.TagEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordSpecification;
+import com.kody.coinsec.backend.mapper.dao.TagRepository;
 import com.kody.coinsec.backend.service.RecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -33,6 +37,7 @@ public class RecordServiceImpl implements RecordService {
     private final RecordRepository recordRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final TagRepository tagRepository;
 
     @Override
     @Transactional
@@ -111,12 +116,13 @@ public class RecordServiceImpl implements RecordService {
 
     @Override
     public Page<RecordResponse> getRecords(int page, int size, List<Long> categoryIds, String type,
-                                           LocalDate startDate, LocalDate endDate, Long accountId) {
+                                           LocalDate startDate, LocalDate endDate, Long accountId,
+                                           String keyword, List<Long> tagIds) {
         long userId = StpUtil.getLoginIdAsLong();
         LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
         LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
 
-        var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId);
+        var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId, keyword, tagIds);
         var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "recordTime"));
 
         return recordRepository.findAll(spec, pageable).map(this::toResponse);
@@ -145,6 +151,28 @@ public class RecordServiceImpl implements RecordService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void updateRecordTags(Long recordId, List<Long> tagIds) {
+        long userId = StpUtil.getLoginIdAsLong();
+        RecordEntity record = recordRepository.findById(recordId)
+                .filter(r -> r.getUserId().equals(userId) && !r.getIsDeleted())
+                .orElseThrow(() -> new BusinessException(404, "记录不存在"));
+
+        if (tagIds == null || tagIds.isEmpty()) {
+            record.setTags(new HashSet<>());
+        } else {
+            List<TagEntity> tags = tagRepository.findAllById(tagIds);
+            for (TagEntity tag : tags) {
+                if (!tag.getUserId().equals(userId) || tag.getIsDeleted()) {
+                    throw new BusinessException(404, "标签不存在: " + tag.getTagId());
+                }
+            }
+            record.setTags(new HashSet<>(tags));
+        }
+        recordRepository.save(record);
+    }
+
     private void updateBalance(AccountEntity account, String type, BigDecimal amount, boolean isRevert) {
         if ("expense".equals(type)) {
             account.setBalance(isRevert
@@ -170,6 +198,10 @@ public class RecordServiceImpl implements RecordService {
         String accountName = accountRepository.findById(r.getAccountId())
                 .map(AccountEntity::getName).orElse(null);
 
+        List<Long> tagIds = r.getTags().stream()
+                .map(TagEntity::getTagId)
+                .toList();
+
         return RecordResponse.builder()
                 .recordId(r.getRecordId())
                 .categoryId(r.getCategoryId())
@@ -180,6 +212,7 @@ public class RecordServiceImpl implements RecordService {
                 .amount(r.getAmount())
                 .remark(r.getRemark())
                 .recordTime(r.getRecordTime())
+                .tagIds(tagIds)
                 .build();
     }
 
