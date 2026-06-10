@@ -7,8 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Set;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -39,8 +37,4 @@ public class TagEntity {
     @Builder.Default
     @Schema(hidden = true)
     private Boolean isDeleted = false;
-
-    @ManyToMany(mappedBy = "tags")
-    @Schema(hidden = true)
-    private Set<RecordEntity> records;
 }
