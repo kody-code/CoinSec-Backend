@@ -21,28 +21,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 25
+      - name: Set up GraalVM JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: "25"
-          distribution: temurin
+          java-version: "21"
+          distribution: graalvm
           cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Backend Jar
-        run: ./gradlew bootJar --no-daemon
+      - name: Build Native Binary
+        run: ./gradlew nativeCompile --no-daemon
 
       - name: List built files
-        run: ls -lh build/libs/
+        run: ls -lh build/native/nativeCompile/
 
       - name: Create Release & Upload
         uses: softprops/action-gh-release@v2
         with:
           name: "Backend ${{ github.ref_name }}"
-          body: "后端自动构建版本 ${{ github.ref_name }}"
-          files: build/libs/*.jar
+          body: "后端原生构建版本 ${{ github.ref_name }}"
+          files: build/native/nativeCompile/backend
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
