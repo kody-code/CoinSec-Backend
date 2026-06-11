@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.kody.coinsec"
-version = "2.1.1"
+version = "2.1.2"
 
 java {
 	toolchain {
