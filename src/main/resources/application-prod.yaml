@@ -12,11 +12,13 @@ spring:
     username: ${DB_USERNAME:coinsec}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 5
+      minimum-idle: 1
       idle-timeout: 300000
       connection-timeout: 20000
       max-lifetime: 1200000
+  aot:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: none
