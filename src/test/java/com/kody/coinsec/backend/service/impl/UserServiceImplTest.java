@@ -2,10 +2,12 @@ package com.kody.coinsec.backend.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
+import com.kody.coinsec.backend.dto.DefaultAccountRequest;
 import com.kody.coinsec.backend.dto.UpdateNicknameRequest;
 import com.kody.coinsec.backend.dto.UpdatePasswordRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
 import com.kody.coinsec.backend.mapper.dao.UserRepository;
+import com.kody.coinsec.backend.service.AccountService;
 import com.kody.coinsec.backend.util.PasswordEncoder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,9 @@ class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AccountService accountService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -107,5 +112,50 @@ class UserServiceImplTest {
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> userService.updatePassword(request));
         assertEquals("原密码错误", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("设置默认账户-成功设置收入和支出")
+    void setDefaultAccounts_Success() {
+        DefaultAccountRequest request = new DefaultAccountRequest();
+        request.setDefaultIncomeAccountId(1L);
+        request.setDefaultExpenseAccountId(2L);
+
+        userService.setDefaultAccounts(request);
+
+        assertEquals(1L, mockUser.getDefaultIncomeAccountId());
+        assertEquals(2L, mockUser.getDefaultExpenseAccountId());
+        verify(accountService).getAccountById(1L);
+        verify(accountService).getAccountById(2L);
+        verify(userRepository).save(mockUser);
+    }
+
+    @Test
+    @DisplayName("设置默认账户-只设置收入不修改支出")
+    void setDefaultAccounts_OnlyIncome() {
+        DefaultAccountRequest request = new DefaultAccountRequest();
+        request.setDefaultIncomeAccountId(1L);
+
+        userService.setDefaultAccounts(request);
+
+        assertEquals(1L, mockUser.getDefaultIncomeAccountId());
+        assertNull(mockUser.getDefaultExpenseAccountId());
+        verify(accountService).getAccountById(1L);
+        verify(accountService, never()).getAccountById(2L);
+        verify(userRepository).save(mockUser);
+    }
+
+    @Test
+    @DisplayName("设置默认账户-账户不存在时抛出异常")
+    void setDefaultAccounts_AccountNotFound_ThrowsException() {
+        when(accountService.getAccountById(99L))
+                .thenThrow(new BusinessException(404, "账户不存在"));
+
+        DefaultAccountRequest request = new DefaultAccountRequest();
+        request.setDefaultIncomeAccountId(99L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> userService.setDefaultAccounts(request));
+        assertEquals(404, ex.getCode());
     }
 }

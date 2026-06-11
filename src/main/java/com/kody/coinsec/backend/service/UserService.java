@@ -1,5 +1,6 @@
 package com.kody.coinsec.backend.service;
 
+import com.kody.coinsec.backend.dto.DefaultAccountRequest;
 import com.kody.coinsec.backend.dto.UpdateNicknameRequest;
 import com.kody.coinsec.backend.dto.UpdatePasswordRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
@@ -14,4 +15,6 @@ public interface UserService {
     void updatePassword(UpdatePasswordRequest request);
 
     String uploadAvatar(MultipartFile file);
+
+    void setDefaultAccounts(DefaultAccountRequest request);
 }

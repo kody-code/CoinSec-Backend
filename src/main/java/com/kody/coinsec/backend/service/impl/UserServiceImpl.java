@@ -2,10 +2,12 @@ package com.kody.coinsec.backend.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
+import com.kody.coinsec.backend.dto.DefaultAccountRequest;
 import com.kody.coinsec.backend.dto.UpdateNicknameRequest;
 import com.kody.coinsec.backend.dto.UpdatePasswordRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
 import com.kody.coinsec.backend.mapper.dao.UserRepository;
+import com.kody.coinsec.backend.service.AccountService;
 import com.kody.coinsec.backend.service.UserService;
 import com.kody.coinsec.backend.util.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,8 @@ public class UserServiceImpl implements UserService {
     private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
+
+    private final AccountService accountService;
 
     @Value("${app.upload-dir:uploads}")
     private String uploadDir;
@@ -55,6 +59,20 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setPassword(PasswordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @Override
+    public void setDefaultAccounts(DefaultAccountRequest request) {
+        UserEntity user = getUserInfo();
+        if (request.getDefaultIncomeAccountId() != null) {
+            accountService.getAccountById(request.getDefaultIncomeAccountId());
+            user.setDefaultIncomeAccountId(request.getDefaultIncomeAccountId());
+        }
+        if (request.getDefaultExpenseAccountId() != null) {
+            accountService.getAccountById(request.getDefaultExpenseAccountId());
+            user.setDefaultExpenseAccountId(request.getDefaultExpenseAccountId());
+        }
         userRepository.save(user);
     }
 

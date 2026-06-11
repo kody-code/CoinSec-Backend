@@ -5,8 +5,10 @@ import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AuthResponse;
 import com.kody.coinsec.backend.dto.LoginRequest;
 import com.kody.coinsec.backend.dto.SetupRequest;
+import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.CategoryEntity;
 import com.kody.coinsec.backend.entity.model.UserEntity;
+import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
 import com.kody.coinsec.backend.mapper.dao.UserRepository;
 import com.kody.coinsec.backend.service.AuthService;
@@ -24,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final AccountRepository accountRepository;
 
     private static final List<CategoryTemplate> DEFAULT_EXPENSES = List.of(
             new CategoryTemplate("餐饮", "restaurant", 1),
@@ -63,6 +66,15 @@ public class AuthServiceImpl implements AuthService {
         UserEntity saved = userRepository.save(user);
 
         createDefaultCategories(saved.getUserId());
+
+        AccountEntity defaultAccount = accountRepository.save(AccountEntity.builder()
+                .userId(saved.getUserId())
+                .name("默认账户")
+                .icon("account_balance_wallet")
+                .build());
+        saved.setDefaultIncomeAccountId(defaultAccount.getAccountId());
+        saved.setDefaultExpenseAccountId(defaultAccount.getAccountId());
+        userRepository.save(saved);
 
         StpUtil.login(saved.getUserId());
         String token = StpUtil.getTokenValue();

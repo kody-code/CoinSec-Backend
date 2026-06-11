@@ -2,29 +2,41 @@ package com.kody.coinsec.backend.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.kody.coinsec.backend.common.exception.BusinessException;
+import com.kody.coinsec.backend.dto.AnnualStatisticsResponse;
+import com.kody.coinsec.backend.dto.MonthlyStatisticsResponse;
 import com.kody.coinsec.backend.dto.RecordRequest;
 import com.kody.coinsec.backend.dto.RecordResponse;
 import com.kody.coinsec.backend.dto.StatisticsResponse;
 import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.CategoryEntity;
 import com.kody.coinsec.backend.entity.model.RecordEntity;
+import com.kody.coinsec.backend.entity.model.TagEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordRepository;
 import com.kody.coinsec.backend.mapper.dao.RecordSpecification;
+import com.kody.coinsec.backend.mapper.dao.TagRepository;
 import com.kody.coinsec.backend.service.RecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +45,7 @@ public class RecordServiceImpl implements RecordService {
     private final RecordRepository recordRepository;
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
+    private final TagRepository tagRepository;
 
     @Override
     @Transactional
@@ -48,6 +61,7 @@ public class RecordServiceImpl implements RecordService {
                 .amount(request.getAmount())
                 .remark(request.getRemark())
                 .recordTime(parseTime(request.getRecordTime()))
+                .tags(resolveTags(request.getTagIds(), userId))
                 .build();
         RecordEntity saved = recordRepository.save(record);
 
@@ -77,6 +91,9 @@ public class RecordServiceImpl implements RecordService {
         record.setAmount(request.getAmount());
         record.setRemark(request.getRemark());
         record.setRecordTime(parseTime(request.getRecordTime()));
+        if (request.getTagIds() != null) {
+            record.setTags(resolveTags(request.getTagIds(), userId));
+        }
 
         RecordEntity saved = recordRepository.save(record);
 
@@ -110,16 +127,34 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<RecordResponse> getRecords(int page, int size, List<Long> categoryIds, String type,
-                                           LocalDate startDate, LocalDate endDate, Long accountId) {
+                                           LocalDate startDate, LocalDate endDate, Long accountId,
+                                           String keyword, List<Long> tagIds) {
         long userId = StpUtil.getLoginIdAsLong();
         LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
         LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
 
-        var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId);
+        var spec = RecordSpecification.withFilters(userId, categoryIds, type, start, end, accountId, keyword, tagIds);
         var pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "recordTime"));
 
-        return recordRepository.findAll(spec, pageable).map(this::toResponse);
+        Page<RecordEntity> entityPage = recordRepository.findAll(spec, pageable);
+        List<Long> recordIds = entityPage.getContent().stream()
+                .map(RecordEntity::getRecordId)
+                .toList();
+
+        Map<Long, List<Long>> recordTagMap = recordIds.isEmpty() ? Map.of()
+                : recordRepository.findTagIdsByRecordIds(recordIds).stream()
+                .collect(Collectors.groupingBy(
+                        row -> (Long) row[0],
+                        Collectors.mapping(row -> (Long) row[1], Collectors.toList())
+                ));
+
+        List<RecordResponse> responses = entityPage.getContent().stream()
+                .map(r -> toResponse(r, recordTagMap.getOrDefault(r.getRecordId(), List.of())))
+                .toList();
+
+        return new PageImpl<>(responses, pageable, entityPage.getTotalElements());
     }
 
     @Override
@@ -145,6 +180,71 @@ public class RecordServiceImpl implements RecordService {
                 .build();
     }
 
+    @Override
+    public List<MonthlyStatisticsResponse> getMonthlyStatistics(Integer year) {
+        long userId = StpUtil.getLoginIdAsLong();
+        return recordRepository.findMonthlyStatistics(userId, year);
+    }
+
+    @Override
+    public List<AnnualStatisticsResponse> getAnnualStatistics(Integer startYear, Integer endYear) {
+        long userId = StpUtil.getLoginIdAsLong();
+        return recordRepository.findAnnualStatistics(userId, startYear, endYear);
+    }
+
+    @Override
+    public void exportRecords(LocalDate startDate, LocalDate endDate, String type, HttpServletResponse response) {
+        long userId = StpUtil.getLoginIdAsLong();
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        var spec = RecordSpecification.withFilters(userId, null, type, start, end, null, null, null);
+
+        List<RecordEntity> records = recordRepository.findAll(spec,
+                Sort.by(Sort.Direction.DESC, "recordTime"));
+
+        StringBuilder csv = new StringBuilder("ID,类型,金额,分类,账户,备注,时间\n");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        for (RecordEntity record : records) {
+            String categoryName = categoryRepository.findById(record.getCategoryId())
+                    .map(CategoryEntity::getName).orElse("");
+            String accountName = accountRepository.findById(record.getAccountId())
+                    .map(AccountEntity::getName).orElse("");
+
+            csv.append(record.getRecordId()).append(",")
+                    .append(record.getType()).append(",")
+                    .append(record.getAmount()).append(",")
+                    .append(categoryName).append(",")
+                    .append(accountName).append(",")
+                    .append(record.getRemark() != null ? record.getRemark() : "").append(",")
+                    .append(record.getRecordTime().format(fmt))
+                    .append("\n");
+        }
+
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=records.csv");
+        response.setCharacterEncoding("UTF-8");
+        try {
+            response.getWriter().write(csv.toString());
+            response.getWriter().flush();
+        } catch (Exception e) {
+            throw new RuntimeException("导出失败", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateRecordTags(Long recordId, List<Long> tagIds) {
+        long userId = StpUtil.getLoginIdAsLong();
+        RecordEntity record = recordRepository.findById(recordId)
+                .filter(r -> r.getUserId().equals(userId) && !r.getIsDeleted())
+                .orElseThrow(() -> new BusinessException(404, "记录不存在"));
+
+        record.setTags(resolveTags(tagIds, userId));
+        recordRepository.save(record);
+    }
+
     private void updateBalance(AccountEntity account, String type, BigDecimal amount, boolean isRevert) {
         if ("expense".equals(type)) {
             account.setBalance(isRevert
@@ -164,7 +264,27 @@ public class RecordServiceImpl implements RecordService {
                 .orElseThrow(() -> new BusinessException(404, "账户不存在"));
     }
 
+    private Set<TagEntity> resolveTags(List<Long> tagIds, Long userId) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new HashSet<>();
+        }
+        List<TagEntity> tags = tagRepository.findAllById(tagIds);
+        for (TagEntity tag : tags) {
+            if (!tag.getUserId().equals(userId) || tag.getIsDeleted()) {
+                throw new BusinessException(404, "标签不存在: " + tag.getTagId());
+            }
+        }
+        return new HashSet<>(tags);
+    }
+
     private RecordResponse toResponse(RecordEntity r) {
+        List<Long> tagIds = r.getTags().stream()
+                .map(TagEntity::getTagId)
+                .toList();
+        return toResponse(r, tagIds);
+    }
+
+    private RecordResponse toResponse(RecordEntity r, List<Long> tagIds) {
         String categoryName = categoryRepository.findById(r.getCategoryId())
                 .map(CategoryEntity::getName).orElse(null);
         String accountName = accountRepository.findById(r.getAccountId())
@@ -180,6 +300,7 @@ public class RecordServiceImpl implements RecordService {
                 .amount(r.getAmount())
                 .remark(r.getRemark())
                 .recordTime(r.getRecordTime())
+                .tagIds(tagIds)
                 .build();
     }
 

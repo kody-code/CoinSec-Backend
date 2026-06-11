@@ -1,6 +1,7 @@
 package com.kody.coinsec.backend.controller;
 
 import com.kody.coinsec.backend.common.exception.GlobalExceptionHandler;
+import com.kody.coinsec.backend.dto.DefaultAccountRequest;
 import com.kody.coinsec.backend.dto.UpdateNicknameRequest;
 import com.kody.coinsec.backend.dto.UpdatePasswordRequest;
 import com.kody.coinsec.backend.entity.model.UserEntity;
@@ -78,6 +79,20 @@ class UserControllerTest {
         request.setNewPassword("new");
 
         mockMvc.perform(put("/api/user/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("PUT /api/user/default-accounts - 成功时返回200")
+    void setDefaultAccounts_Success() throws Exception {
+        DefaultAccountRequest request = new DefaultAccountRequest();
+        request.setDefaultIncomeAccountId(1L);
+        request.setDefaultExpenseAccountId(2L);
+
+        mockMvc.perform(put("/api/user/default-accounts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

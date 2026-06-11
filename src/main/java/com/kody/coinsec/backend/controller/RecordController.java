@@ -1,6 +1,8 @@
 package com.kody.coinsec.backend.controller;
 
 import com.kody.coinsec.backend.common.result.Result;
+import com.kody.coinsec.backend.dto.AnnualStatisticsResponse;
+import com.kody.coinsec.backend.dto.MonthlyStatisticsResponse;
 import com.kody.coinsec.backend.dto.RecordRequest;
 import com.kody.coinsec.backend.dto.RecordResponse;
 import com.kody.coinsec.backend.dto.StatisticsResponse;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -75,8 +78,23 @@ public class RecordController {
             @Parameter(description = "类型: income(收入) / expense(支出)") @RequestParam(required = false) String type,
             @Parameter(description = "开始日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @Parameter(description = "结束日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @Parameter(description = "账户 ID") @RequestParam(required = false) Long accountId) {
-        return Result.success(recordService.getRecords(page, size, categoryIds, type, startDate, endDate, accountId));
+            @Parameter(description = "账户 ID") @RequestParam(required = false) Long accountId,
+            @Parameter(description = "备注关键字搜索") @RequestParam(required = false) String keyword,
+            @Parameter(description = "标签 ID 列表，多个用逗号分隔") @RequestParam(required = false) List<Long> tagIds) {
+        return Result.success(recordService.getRecords(page, size, categoryIds, type, startDate, endDate, accountId, keyword, tagIds));
+    }
+
+    @Operation(summary = "更新账单标签", description = "全量替换账单关联的标签")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "更新成功"),
+            @ApiResponse(responseCode = "404", description = "账单不存在")
+    })
+    @PutMapping("/{id}/tags")
+    public Result<Void> updateTags(
+            @Parameter(description = "账单 ID") @PathVariable Long id,
+            @RequestBody Map<String, List<Long>> body) {
+        recordService.updateRecordTags(id, body.get("tagIds"));
+        return Result.success();
     }
 
     @Operation(summary = "收支统计", description = "按日期范围统计总收入、总支出和分类明细")
@@ -89,5 +107,36 @@ public class RecordController {
             @Parameter(description = "结束日期 (yyyy-MM-dd)", required = true) @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @Parameter(description = "账户 ID，不传则统计全部账户") @RequestParam(required = false) Long accountId) {
         return Result.success(recordService.getStatistics(startDate, endDate, accountId));
+    }
+
+    @Operation(summary = "月度收支汇总", description = "按月份统计指定年份的每月收支")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "成功返回月度数据")
+    })
+    @GetMapping("/statistics/monthly")
+    public Result<List<MonthlyStatisticsResponse>> monthlyStatistics(
+            @Parameter(description = "年份", required = true) @RequestParam Integer year) {
+        return Result.success(recordService.getMonthlyStatistics(year));
+    }
+
+    @Operation(summary = "年度收支对比", description = "统计指定年份范围的年度收支")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "成功返回年度数据")
+    })
+    @GetMapping("/statistics/annual")
+    public Result<List<AnnualStatisticsResponse>> annualStatistics(
+            @Parameter(description = "开始年份", required = true) @RequestParam Integer startYear,
+            @Parameter(description = "结束年份", required = true) @RequestParam Integer endYear) {
+        return Result.success(recordService.getAnnualStatistics(startYear, endYear));
+    }
+
+    @Operation(summary = "导出 CSV", description = "导出账单记录为 CSV 文件")
+    @GetMapping("/export")
+    public void export(
+            @Parameter(description = "开始日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "结束日期 (yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @Parameter(description = "类型: income(收入) / expense(支出)，不传则导出全部") @RequestParam(required = false) String type,
+            HttpServletResponse response) {
+        recordService.exportRecords(startDate, endDate, type, response);
     }
 }

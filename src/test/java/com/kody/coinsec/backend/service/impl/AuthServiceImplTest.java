@@ -5,6 +5,7 @@ import com.kody.coinsec.backend.common.exception.BusinessException;
 import com.kody.coinsec.backend.dto.AuthResponse;
 import com.kody.coinsec.backend.dto.LoginRequest;
 import com.kody.coinsec.backend.dto.SetupRequest;
+import com.kody.coinsec.backend.entity.model.AccountEntity;
 import com.kody.coinsec.backend.entity.model.UserEntity;
 import com.kody.coinsec.backend.mapper.dao.AccountRepository;
 import com.kody.coinsec.backend.mapper.dao.CategoryRepository;
@@ -69,8 +70,12 @@ class AuthServiceImplTest {
                     .password(saved.getPassword())
                     .nickname(saved.getNickname())
                     .createTime(saved.getCreateTime())
+                    .defaultIncomeAccountId(saved.getDefaultIncomeAccountId())
+                    .defaultExpenseAccountId(saved.getDefaultExpenseAccountId())
                     .build();
         });
+        when(accountRepository.save(any())).thenReturn(
+                AccountEntity.builder().accountId(1L).build());
         stpUtilMock.when(StpUtil::getTokenValue).thenReturn("mock-token");
 
         SetupRequest request = new SetupRequest();
@@ -82,7 +87,8 @@ class AuthServiceImplTest {
         assertNotNull(response);
         assertEquals(1L, response.getUserId());
         assertEquals("mock-token", response.getToken());
-        verify(userRepository).save(any());
+        verify(userRepository, times(2)).save(any());
+        verify(accountRepository).save(any());
         stpUtilMock.verify(() -> StpUtil.login(1L));
     }
 
