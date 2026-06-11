@@ -66,7 +66,6 @@ src/main/java/com/kody/coinsec/backend/
 ## 数据库
 
 - PostgreSQL，默认连接 `localhost:5432/coinsec_db`
-- 用户名/密码：`coinsec` / `097016@CoinSec`
 - **开发环境**：JPA `ddl-auto: update`，实体自动建表
 - **生产环境**：Flyway 管理迁移，`ddl-auto: none`
 
@@ -110,4 +109,4 @@ CI/CD: 推送 `v*` 标签触发 GitHub Actions，自动构建 JAR 并发布到 G
 
 ## 项目版本
 
-当前版本：`1.0.1`
+当前版本：`2.1.2`
